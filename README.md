@@ -7,7 +7,7 @@ A Python daemon that schedules open/close commands for RF-controlled motorized b
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/) (`brew install uv`)
 - A Bond Bridge on your local network
-- Your Bond API token (found in the Bond Home app: Device → Settings → Local Control API)
+- Your Bond API token (see [Finding your token](#finding-your-token) below)
 
 ## Setup
 
@@ -25,8 +25,9 @@ All configuration lives in `config.yaml`. See `config.example.yaml` for a fully 
 
 | Field | Description |
 |-------|-------------|
-| `bond.token` | Bond API token (required) |
+| `bond.token` | Bond API token. Leave `null` to run the token setup wizard |
 | `bond.host` | Bridge IP/hostname. `null` = auto-discover via mDNS |
+| `bond.name` | mDNS service name of the bridge (e.g. `BD12345`). Used to pick a specific bridge during discovery when `host` is null. Find it with `dns-sd -B _bond._tcp` |
 | `location.latitude/longitude` | Used to calculate sunrise/sunset |
 | `schedule.open.reference` | `dawn` (sunrise) or `dusk` (sunset) |
 | `schedule.open.offset_minutes` | Minutes before (negative) or after (positive) the reference |
@@ -55,6 +56,19 @@ uv run bond-blinds --config config.yaml --dry-run
 uv run bond-blinds --config config.yaml --open-now
 uv run bond-blinds --config config.yaml --close-now
 ```
+
+## Finding your token
+
+If `bond.token` is null or missing from `config.yaml`, the script will launch an interactive setup wizard offering two options:
+
+**Option 1 — Bond Home App** (no reboot needed):
+1. Open the Bond Home app
+2. Tap your Bond Bridge
+3. Go to Settings → Local Control API
+4. Copy the token and paste it into `config.yaml`
+
+**Option 2 — Auto-retrieve** (requires a bridge reboot):
+The wizard discovers your bridge, prompts you to reboot it, then polls the bridge's setup endpoint and displays the token automatically. You then paste it into `config.yaml` and run the script again.
 
 ## Running at startup on macOS
 

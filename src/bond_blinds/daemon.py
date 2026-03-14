@@ -46,9 +46,12 @@ def _resolve_host(cfg: Config) -> str:
     if cfg.bond.host:
         logger.info("Using configured Bond Bridge host: %s", cfg.bond.host)
         return cfg.bond.host
-    logger.info("Discovering Bond Bridge via Zeroconf...")
+    if cfg.bond.name:
+        logger.info("Discovering Bond Bridge with name %r via Zeroconf...", cfg.bond.name)
+    else:
+        logger.info("Discovering Bond Bridge via Zeroconf...")
     try:
-        host = discover_bridge()
+        host = discover_bridge(name=cfg.bond.name)
         logger.info("Discovered Bond Bridge at %s", host)
         return host
     except DiscoveryError as exc:

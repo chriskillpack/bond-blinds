@@ -10,8 +10,9 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class BondConfig:
-    token: str
-    host: Optional[str]  # None = auto-discover via Zeroconf
+    token: Optional[str]  # None = not yet configured; setup wizard will run
+    host: Optional[str]   # None = auto-discover via Zeroconf
+    name: Optional[str]   # mDNS name to match during discovery; None = first bridge found
 
 
 @dataclass(frozen=True)
@@ -86,10 +87,10 @@ def load_config(path: str | Path) -> Config:
 
     # bond
     bond_raw = raw.get("bond", {})
-    token = _require(bond_raw.get("token"), "bond.token")
-    if not isinstance(token, str) or not token.strip():
+    token = bond_raw.get("token")
+    if token is not None and (not isinstance(token, str) or not token.strip()):
         raise ValueError("bond.token must be a non-empty string")
-    bond = BondConfig(token=token, host=bond_raw.get("host"))
+    bond = BondConfig(token=token or None, host=bond_raw.get("host"), name=bond_raw.get("name"))
 
     # location
     loc_raw = raw.get("location", {})
