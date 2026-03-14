@@ -1,0 +1,44 @@
+bond:
+  # Set to null to auto-discover the Bond Bridge via Zeroconf/mDNS (_bond._tcp).
+  # Set to an IP address or hostname to skip discovery (recommended for stability).
+  host: null
+  token: "your_token_here"  # Found in the Bond Home app: Device > Settings > Local Control API
+
+location:
+  # Latitude and longitude used for sunrise/sunset calculation.
+  latitude: 40.7128
+  longitude: -74.0060
+
+schedule:
+  open:
+    # "dawn" = sunrise (sun at horizon); "dusk" = sunset.
+    reference: dawn
+    # Offset in minutes from the reference time.
+    # Negative = before, positive = after.
+    offset_minutes: -30   # Open 30 minutes before sunrise
+  close:
+    reference: dusk
+    offset_minutes: 30    # Close 30 minutes after sunset
+
+commands:
+  # Number of times to send each command (rounds). All blinds are commanded
+  # each round before sleeping, to spread RF transmissions over time.
+  retry_count: 3
+  # Seconds to wait between rounds.
+  retry_delay_seconds: 5
+
+# List of device IDs to control. Leave empty to auto-discover all motorized
+# shade (MS) devices registered on the Bond Bridge.
+devices: []
+
+# To control specific devices only, list their IDs (found in the Bond Home app
+# or via GET /v2/devices):
+# devices:
+#   - "79135791"
+#   - "aabbccdd"
+
+logging:
+  # Path to log file. Logs are also written to stdout.
+  file: ./bond-blinds.log
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
