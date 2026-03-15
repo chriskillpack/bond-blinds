@@ -35,6 +35,9 @@ def _setup_logging(cfg: Config) -> None:
     stream_handler.setFormatter(fmt)
     root.addHandler(stream_handler)
 
+    # httpx logs every request at INFO; keep it quiet unless debugging
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 def _handle_signal(signum, frame) -> None:
     global _running
@@ -138,35 +141,30 @@ def _execute_event(
     )
 
     for round_num in range(1, retry_count + 1):
+        successes = 0
         for device in devices:
             if dry_run:
-                logger.info(
+                logger.debug(
                     "[%d/%d] %s: %s -> (dry run)",
-                    round_num,
-                    retry_count,
-                    device.name,
-                    action,
+                    round_num, retry_count, device.name, action,
                 )
+                successes += 1
                 continue
             status = client.execute_action(device.id, action)
             if status == 200 or status == 204:
-                logger.info(
+                logger.debug(
                     "[%d/%d] %s: %s -> %d OK",
-                    round_num,
-                    retry_count,
-                    device.name,
-                    action,
-                    status,
+                    round_num, retry_count, device.name, action, status,
                 )
+                successes += 1
             else:
                 logger.warning(
                     "[%d/%d] %s: %s -> %s",
-                    round_num,
-                    retry_count,
-                    device.name,
-                    action,
+                    round_num, retry_count, device.name, action,
                     status if status != 0 else "error",
                 )
+        label = "dry run" if dry_run else f"{successes}/{len(devices)} blind{'s' if len(devices) != 1 else ''}"
+        logger.info("Round %d/%d: %s %s", round_num, retry_count, action, label)
         if round_num < retry_count:
             logger.debug("Waiting %ds before round %d", retry_delay, round_num + 1)
             time.sleep(retry_delay)
@@ -199,17 +197,19 @@ def send_command_now(cfg: Config, action: str) -> None:
         if not devices:
             logger.error("No controllable devices found. Exiting.")
             raise SystemExit(1)
+        successes = 0
         for device in devices:
             status = client.execute_action(device.id, action)
             if status in (200, 204):
-                logger.info("%s: %s -> %d OK", device.name, action, status)
+                logger.debug("%s: %s -> %d OK", device.name, action, status)
+                successes += 1
             else:
                 logger.warning(
                     "%s: %s -> %s",
-                    device.name,
-                    action,
+                    device.name, action,
                     status if status != 0 else "error",
                 )
+        logger.info("%s sent to %d/%d blind%s", action, successes, len(devices), "s" if len(devices) != 1 else "")
 
 
 def run(cfg: Config, dry_run: bool = False) -> None:
