@@ -46,6 +46,11 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True)
+class WebConfig:
+    port: int
+
+
+@dataclass(frozen=True)
 class Config:
     bond: BondConfig
     location: LocationConfig
@@ -53,6 +58,7 @@ class Config:
     commands: CommandConfig
     devices: list[str]
     logging: LoggingConfig
+    web: WebConfig
 
 
 _VALID_REFERENCES = {"dawn", "dusk"}
@@ -137,6 +143,13 @@ def load_config(path: str | Path) -> Config:
         )
     logging_cfg = LoggingConfig(file=log_file, level=log_level)
 
+    # web
+    web_raw = raw.get("web", {})
+    web_port = web_raw.get("port", 8180)
+    if not isinstance(web_port, int) or web_port < 1 or web_port > 65535:
+        raise ValueError("web.port must be an integer between 1 and 65535")
+    web_cfg = WebConfig(port=web_port)
+
     return Config(
         bond=bond,
         location=location,
@@ -144,4 +157,5 @@ def load_config(path: str | Path) -> Config:
         commands=commands,
         devices=devices,
         logging=logging_cfg,
+        web=web_cfg,
     )

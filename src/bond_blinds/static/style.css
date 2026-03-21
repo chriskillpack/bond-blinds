@@ -1,0 +1,64 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+.card {
+  background: #16213e;
+  border-radius: 19px;
+  padding: 3rem 3.6rem;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.date {
+  font-size: 1.9rem;
+  font-weight: 600;
+  margin-bottom: 2.4rem;
+  color: #e0e0e0;
+}
+.schedule {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1.2rem;
+}
+.event {
+  flex: 1;
+}
+.event-label {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8888aa;
+  margin-bottom: 0.3rem;
+}
+.event-time {
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+.open .event-time { color: #f0c040; }
+.close .event-time { color: #6088d0; }
+.solar {
+  font-size: 0.95rem;
+  color: #666680;
+  margin-top: 0.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+}
+.solar svg {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+.waiting {
+  color: #8888aa;
+  font-size: 1.3rem;
+}

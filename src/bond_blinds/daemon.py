@@ -14,6 +14,7 @@ from .client import BondClient, DeviceInfo
 from .config import Config
 from .discovery import DiscoveryError, discover_bridge
 from .solar import get_solar_times
+from .web import schedule_state, start_server
 
 logger = logging.getLogger(__name__)
 
@@ -270,6 +271,8 @@ def run(cfg: Config, dry_run: bool = False) -> None:
     if dry_run:
         logger.info("Dry-run mode enabled — no commands will be sent")
 
+    web_server = start_server(cfg.web.port)
+
     host = _resolve_host(cfg)
 
     with BondClient(host, cfg.bond.token) as client:
@@ -301,6 +304,7 @@ def run(cfg: Config, dry_run: bool = False) -> None:
             if now.date() != today:
                 today = now.date()
                 sunrise, sunset, open_time, close_time = _compute_schedule(cfg, today)
+                schedule_state.update(today, sunrise, sunset, open_time, close_time)
                 logger.info(
                     "Today's schedule: dawn=sunrise, dusk=sunset. "
                     "Open at %s, Close at %s",
@@ -342,4 +346,5 @@ def run(cfg: Config, dry_run: bool = False) -> None:
 
             _execute_event(client, devices, next_action, cfg, dry_run)
 
+    web_server.shutdown()
     logger.info("bond-blinds stopped")

@@ -46,3 +46,7 @@ logging:
   file: ./bond-blinds.log
   # Log level: DEBUG, INFO, WARNING, ERROR
   level: INFO
+
+web:
+  # Port for the status web server. Set to view today's schedule in a browser.
+  port: 8180

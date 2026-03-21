@@ -38,6 +38,7 @@ All configuration lives in `config.yaml`. See `config.example.yaml` for a fully 
 | `devices` | List of device IDs to control. Empty = all MS-type devices |
 | `logging.file` | Log file path |
 | `logging.level` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
+| `web.port` | Port for the status web server (default: 8180) |
 
 ## Usage
 
@@ -56,6 +57,12 @@ uv run bond-blinds --config config.yaml --dry-run
 uv run bond-blinds --config config.yaml --open-now
 uv run bond-blinds --config config.yaml --close-now
 ```
+
+## Status web server
+
+The daemon runs a lightweight status page on port 8180 (configurable via `web.port`). It shows today's date, the scheduled open/close times, and the corresponding sunrise/sunset times.
+
+Visit `http://<hostname>:8180` in a browser to view the current schedule. The server binds to all interfaces, so it's accessible over Tailscale or any other network the host is on.
 
 ## Solar history
 
