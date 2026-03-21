@@ -57,6 +57,15 @@ uv run bond-blinds --config config.yaml --open-now
 uv run bond-blinds --config config.yaml --close-now
 ```
 
+## Solar history
+
+The daemon records daily sunrise/sunset times and the computed open/close times to `solar_history.jsonl` in the working directory. One entry is appended per day after the last event completes. The file retains the last 3 years of entries, oldest first:
+
+```json
+{"date": "2026-03-14", "sunrise": "07:15 PDT", "sunset": "19:12 PDT", "open": "06:45 PDT", "close": "19:42 PDT"}
+{"date": "2026-03-15", "sunrise": "07:14 PDT", "sunset": "19:13 PDT", "open": "06:44 PDT", "close": "19:43 PDT"}
+```
+
 ## Finding your token
 
 If `bond.token` is null or missing from `config.yaml`, the script will launch an interactive setup wizard offering two options:

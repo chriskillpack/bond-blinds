@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import logging.handlers
+import os
 import signal
 import time
 
@@ -105,8 +107,8 @@ def _resolve_devices(client: BondClient, cfg: Config) -> list[DeviceInfo]:
 def _compute_schedule(
     cfg: Config,
     date: datetime.date,
-) -> tuple[datetime.datetime, datetime.datetime]:
-    """Return (open_time, close_time) for the given date."""
+) -> tuple[datetime.datetime, datetime.datetime, datetime.datetime, datetime.datetime]:
+    """Return (sunrise, sunset, open_time, close_time) for the given date."""
     sunrise, sunset = get_solar_times(
         date, cfg.location.latitude, cfg.location.longitude
     )
@@ -124,7 +126,54 @@ def _compute_schedule(
     close_time = ref_close + datetime.timedelta(
         minutes=cfg.schedule.close.offset_minutes
     )
-    return open_time, close_time
+    return sunrise, sunset, open_time, close_time
+
+
+HISTORY_FILE = "solar_history.jsonl"
+_MAX_HISTORY_DAYS = 365 * 3
+
+
+def _write_solar_record(
+    date: datetime.date,
+    sunrise: datetime.datetime,
+    sunset: datetime.datetime,
+    open_time: datetime.datetime,
+    close_time: datetime.datetime,
+) -> None:
+    """Append today's solar/schedule record to the history file, pruning entries older than 3 years."""
+    fmt = "%H:%M %Z"
+    record = {
+        "date": date.isoformat(),
+        "sunrise": sunrise.strftime(fmt),
+        "sunset": sunset.strftime(fmt),
+        "open": open_time.strftime(fmt),
+        "close": close_time.strftime(fmt),
+    }
+
+    # Read existing entries, drop any for today (in case of restart) and old entries
+    cutoff = date - datetime.timedelta(days=_MAX_HISTORY_DAYS)
+    entries: list[dict] = []
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    entry_date = datetime.date.fromisoformat(entry["date"])
+                    if entry_date >= cutoff and entry_date != date:
+                        entries.append(entry)
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    continue
+
+    entries.append(record)
+
+    with open(HISTORY_FILE, "w") as f:
+        for entry in entries:
+            f.write(json.dumps(entry) + "\n")
+
+    logger.debug("Wrote solar record for %s to %s", date, HISTORY_FILE)
 
 
 def _execute_event(
@@ -241,6 +290,8 @@ def run(cfg: Config, dry_run: bool = False) -> None:
             raise SystemExit(1)
 
         today: datetime.date | None = None
+        sunrise: datetime.datetime | None = None
+        sunset: datetime.datetime | None = None
         open_time: datetime.datetime | None = None
         close_time: datetime.datetime | None = None
 
@@ -249,7 +300,7 @@ def run(cfg: Config, dry_run: bool = False) -> None:
 
             if now.date() != today:
                 today = now.date()
-                open_time, close_time = _compute_schedule(cfg, today)
+                sunrise, sunset, open_time, close_time = _compute_schedule(cfg, today)
                 logger.info(
                     "Today's schedule: dawn=sunrise, dusk=sunset. "
                     "Open at %s, Close at %s",
@@ -265,6 +316,9 @@ def run(cfg: Config, dry_run: bool = False) -> None:
                 events.append((close_time, "Close"))
 
             if not events:
+                # Record the day's solar/schedule data
+                _write_solar_record(today, sunrise, sunset, open_time, close_time)
+
                 # Both events have passed — sleep until just after midnight
                 midnight = datetime.datetime.combine(
                     today + datetime.timedelta(days=1),
