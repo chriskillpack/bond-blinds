@@ -87,6 +87,14 @@ def _render_page() -> str:
 
 
 class _Handler(BaseHTTPRequestHandler):
+    timeout = 10
+
+    def handle(self):
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError, TimeoutError):
+            logger.debug("web: client disconnected or timed out")
+
     def do_GET(self):
         body = _render_page().encode()
         self.send_response(200)
