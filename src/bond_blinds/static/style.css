@@ -58,6 +58,47 @@ body {
   height: 1em;
   flex-shrink: 0;
 }
+.controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.controls form {
+  flex: 1;
+}
+.btn {
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 2px solid;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover {
+  filter: brightness(1.2);
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn-open {
+  background: rgba(240, 192, 64, 0.15);
+  border-color: #f0c040;
+  color: #f0c040;
+}
+.btn-open:active {
+  background: rgba(240, 192, 64, 0.3);
+}
+.btn-close {
+  background: rgba(96, 136, 208, 0.15);
+  border-color: #6088d0;
+  color: #6088d0;
+}
+.btn-close:active {
+  background: rgba(96, 136, 208, 0.3);
+}
 .waiting {
   color: #8888aa;
   font-size: 1.3rem;

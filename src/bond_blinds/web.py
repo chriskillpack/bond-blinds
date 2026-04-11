@@ -6,6 +6,7 @@ import datetime
 import logging
 import string
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -67,6 +68,19 @@ class _ScheduleState:
 # Module-level state shared between the daemon and the web handler.
 schedule_state = _ScheduleState()
 
+# Set by the daemon after resolving the client and devices.
+_client = None
+_devices = None
+_config = None
+
+
+def set_client(client, devices, config) -> None:
+    """Store references for the web handler to send commands."""
+    global _client, _devices, _config
+    _client = client
+    _devices = devices
+    _config = config
+
 
 def _render_page() -> str:
     date, sunrise, sunset, open_time, close_time = schedule_state.snapshot()
@@ -86,6 +100,24 @@ def _render_page() -> str:
     return _PAGE_TEMPLATE.substitute(css=_CSS, content=content)
 
 
+def _send_command(action: str) -> None:
+    """Send a single round of commands to all devices."""
+    if _client is None or _devices is None:
+        logger.warning("web: command requested but client not ready")
+        return
+    logger.info("web: sending %s to all devices", action)
+    for device in _devices:
+        status = _client.execute_action(device.id, action)
+        if status in (200, 204):
+            logger.debug("web: %s %s -> %d OK", device.name, action, status)
+        else:
+            logger.warning(
+                "web: %s %s -> %s",
+                device.name, action,
+                status if status != 0 else "error",
+            )
+
+
 class _Handler(BaseHTTPRequestHandler):
     timeout = 10
 
@@ -95,14 +127,31 @@ class _Handler(BaseHTTPRequestHandler):
         except (ConnectionResetError, BrokenPipeError, TimeoutError):
             logger.debug("web: client disconnected or timed out")
 
-    def do_GET(self):
-        body = _render_page().encode()
-        self.send_response(200)
+    def _send_html(self, body: bytes, status: int = 200) -> None:
+        self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _redirect(self, location: str) -> None:
+        self.send_response(303)
+        self.send_header("Location", location)
+        self.end_headers()
+
+    def do_GET(self):
+        self._send_html(_render_page().encode())
+
+    def do_POST(self):
+        path = urllib.parse.urlparse(self.path).path
+        valid_actions = {"Open", "Close"}
+        # Expected path: /action/Open or /action/Close
+        parts = path.strip("/").split("/")
+        if len(parts) == 2 and parts[0] == "action" and parts[1] in valid_actions:
+            action = parts[1]
+            _send_command(action)
+        self._redirect("/")
 
     def log_message(self, format, *args):
         logger.debug("web: %s", format % args)

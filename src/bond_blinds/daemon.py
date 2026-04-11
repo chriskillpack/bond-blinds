@@ -14,7 +14,7 @@ from .client import BondClient, DeviceInfo
 from .config import Config
 from .discovery import DiscoveryError, discover_bridge
 from .solar import get_solar_times
-from .web import schedule_state, start_server
+from .web import schedule_state, set_client, start_server
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +291,8 @@ def run(cfg: Config, dry_run: bool = False) -> None:
         if not devices:
             logger.error("No controllable devices found. Exiting.")
             raise SystemExit(1)
+
+        set_client(client, devices, cfg)
 
         today: datetime.date | None = None
         sunrise: datetime.datetime | None = None
