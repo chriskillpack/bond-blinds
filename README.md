@@ -88,55 +88,29 @@ The wizard discovers your bridge, prompts you to reboot it, then polls the bridg
 
 ## Running at startup on macOS
 
-Create `~/Library/LaunchAgents/com.bondhome.bond-blinds.plist`:
+`contrib/install-launchd.sh` installs the daemon as a launchd user agent. It starts at login, is restarted if it exits, and runs in the background:
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.bondhome.bond-blinds</string>
-
-    <key>ProgramArguments</key>
-    <array>
-        <string>/Users/YOUR_USERNAME/.local/bin/uv</string>
-        <string>run</string>
-        <string>bond-blinds</string>
-        <string>--config</string>
-        <string>/Users/YOUR_USERNAME/PATH_TO_PROJECT/config.yaml</string>
-    </array>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/YOUR_USERNAME/PATH_TO_PROJECT</string>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <true/>
-
-    <key>StandardOutPath</key>
-    <string>/Users/YOUR_USERNAME/PATH_TO_PROJECT/bond-blinds.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/Users/YOUR_USERNAME/PATH_TO_PROJECT/bond-blinds.log</string>
-</dict>
-</plist>
-```
-
-Replace `YOUR_USERNAME` and `PATH_TO_PROJECT` with actual values. Find the `uv` path with `which uv`.
-
-Load it:
 ```bash
-launchctl load ~/Library/LaunchAgents/com.bondhome.bond-blinds.plist
+./contrib/install-launchd.sh
 ```
 
-To stop or restart:
+With no argument it uses `config.yaml` in the project directory, or, when reinstalling, whatever config the installed agent already points at. Pass a path to point it somewhere else:
+
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.bondhome.bond-blinds.plist
-launchctl load ~/Library/LaunchAgents/com.bondhome.bond-blinds.plist
+./contrib/install-launchd.sh ~/blinds/config.yaml
 ```
+
+The script fills the absolute paths to `uv`, the project and the config into `contrib/com.chriskillpack.bond-blinds.plist` and writes the result to `~/Library/LaunchAgents/`. Re-running it replaces an existing agent, so it is also how you pick up an edited plist.
+
+Day-to-day commands the installer prints on the way out:
+
+```bash
+launchctl kickstart -k gui/$UID/com.chriskillpack.bond-blinds   # restart
+launchctl print gui/$UID/com.chriskillpack.bond-blinds | head   # check
+launchctl bootout gui/$UID/com.chriskillpack.bond-blinds \
+  && rm ~/Library/LaunchAgents/com.chriskillpack.bond-blinds.plist   # remove
+```
+
+The daemon's own log stays where `logging.file` in `config.yaml` puts it. Anything launchd captures — startup failures, tracebacks — goes to `launchd.log` in the project directory.
 
 Note: LaunchAgents run after login, so enable auto-login on the machine (System Settings → Users & Groups) if you want the daemon to start without manual interaction after a reboot.

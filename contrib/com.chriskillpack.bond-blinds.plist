@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The blinds daemon, kept running in the background. Replace __UV__,
+  __PROJECT__ and __CONFIG__ with absolute paths before installing; see the
+  Running at startup section of the README.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chriskillpack.bond-blinds</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__UV__</string>
+        <string>run</string>
+        <string>--project</string>
+        <string>__PROJECT__</string>
+        <string>bond-blinds</string>
+        <string>--config</string>
+        <string>__CONFIG__</string>
+    </array>
+
+    <!-- solar_history.jsonl and a relative logging.file are resolved against
+         the working directory, so anchor it to the project. -->
+    <key>WorkingDirectory</key>
+    <string>__PROJECT__</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- The daemon is meant to be up whenever the machine is. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- A config or network error usually exits immediately; without this
+         KeepAlive would spin on it. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <!-- Startup failures and tracebacks only. The daemon's own log is
+         logging.file in config.yaml; pointing both at one file would give
+         every line twice, since it logs to stdout as well. -->
+    <key>StandardOutPath</key>
+    <string>__PROJECT__/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__PROJECT__/launchd.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
