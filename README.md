@@ -88,29 +88,36 @@ The wizard discovers your bridge, prompts you to reboot it, then polls the bridg
 
 ## Running at startup on macOS
 
-`contrib/install-launchd.sh` installs the daemon as a launchd user agent. It starts at login, is restarted if it exits, and runs in the background:
+`contrib/install-launchd.sh` installs the daemon as a launchd system daemon. It starts at boot, is restarted if it exits, and runs in the background:
 
 ```bash
 ./contrib/install-launchd.sh
 ```
 
-With no argument it uses `config.yaml` in the project directory, or, when reinstalling, whatever config the installed agent already points at. Pass a path to point it somewhere else:
+It needs root to write to `/Library/LaunchDaemons` and re-runs itself under `sudo` if you did not. The daemon itself drops back to the user who ran the install, so logs and `solar_history.jsonl` stay owned by you.
+
+With no argument it uses `config.yaml` in the project directory, or, when reinstalling, whatever config the installed daemon already points at. Pass a path to point it somewhere else:
 
 ```bash
 ./contrib/install-launchd.sh ~/blinds/config.yaml
 ```
 
-The script fills the absolute paths to `uv`, the project and the config into `contrib/com.chriskillpack.bond-blinds.plist` and writes the result to `~/Library/LaunchAgents/`. Re-running it replaces an existing agent, so it is also how you pick up an edited plist.
+The script fills the absolute paths to the entry point, the project and the config into `contrib/com.chriskillpack.bond-blinds.plist` and writes the result to `/Library/LaunchDaemons/`. Re-running it replaces an existing daemon, so it is also how you pick up an edited plist. It requires the venv to exist — run `uv sync` first.
 
 Day-to-day commands the installer prints on the way out:
 
 ```bash
-launchctl kickstart -k gui/$UID/com.chriskillpack.bond-blinds   # restart
-launchctl print gui/$UID/com.chriskillpack.bond-blinds | head   # check
-launchctl bootout gui/$UID/com.chriskillpack.bond-blinds \
-  && rm ~/Library/LaunchAgents/com.chriskillpack.bond-blinds.plist   # remove
+sudo launchctl kickstart -k system/com.chriskillpack.bond-blinds   # restart
+sudo launchctl print system/com.chriskillpack.bond-blinds | head   # check
+sudo launchctl bootout system/com.chriskillpack.bond-blinds \
+  && sudo rm /Library/LaunchDaemons/com.chriskillpack.bond-blinds.plist   # remove
 ```
 
 The daemon's own log stays where `logging.file` in `config.yaml` puts it. Anything launchd captures — startup failures, tracebacks — goes to `launchd.log` in the project directory.
 
-Note: LaunchAgents run after login, so enable auto-login on the machine (System Settings → Users & Groups) if you want the daemon to start without manual interaction after a reboot.
+### Why a system daemon
+
+Earlier versions installed a user agent in `~/Library/LaunchAgents` that ran `uv run bond-blinds`. That has two problems on a headless machine. A user agent only starts once someone logs in to the GUI, so an unattended reboot leaves the blinds unmanaged until you auto-login. And macOS grants Local Network access per binary: `uv` and the interpreter it picks are both ad-hoc signed with no stable identity, so after a system update the daemon is denied access to the LAN, never appears in System Settings → Privacy & Security → Local Network to be granted it, and every request to the bridge fails with `[Errno 65] No route to host`. A system daemon running outside any login session, exec'ing the venv entry point directly, avoids both.
+
+If you are migrating, the installer boots out and removes the old user agent for you.
+

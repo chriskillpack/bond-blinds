@@ -2,25 +2,32 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  The blinds daemon, kept running in the background. Replace __UV__,
-  __PROJECT__ and __CONFIG__ with absolute paths before installing; see the
-  Running at startup section of the README.
+  The blinds daemon, kept running in the background. Replace __EXEC__,
+  __PROJECT__, __CONFIG__ and __USER__ with real values before installing; see
+  the Running at startup section of the README.
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.chriskillpack.bond-blinds</string>
 
+    <!-- Exec the venv entry point directly rather than going through
+         `uv run`. macOS grants Local Network access per binary, and the uv
+         launcher is ad-hoc signed and re-resolves the interpreter on every
+         start, so there is no stable identity for the grant to attach to. -->
     <key>ProgramArguments</key>
     <array>
-        <string>__UV__</string>
-        <string>run</string>
-        <string>--project</string>
-        <string>__PROJECT__</string>
-        <string>bond-blinds</string>
+        <string>__EXEC__</string>
         <string>--config</string>
         <string>__CONFIG__</string>
     </array>
+
+    <!-- Runs in the system domain, not gui/: the daemon comes up at boot with
+         no one logged in, and processes outside a login session are not
+         subject to the Local Network privacy prompt, which a background
+         process has no way to answer. -->
+    <key>UserName</key>
+    <string>__USER__</string>
 
     <!-- solar_history.jsonl and a relative logging.file are resolved against
          the working directory, so anchor it to the project. -->
@@ -34,8 +41,8 @@
     <key>KeepAlive</key>
     <true/>
 
-    <!-- A config or network error usually exits immediately; without this
-         KeepAlive would spin on it. -->
+    <!-- A config error still exits immediately; without this KeepAlive would
+         spin on it. An unreachable bridge is retried in-process instead. -->
     <key>ThrottleInterval</key>
     <integer>30</integer>
 

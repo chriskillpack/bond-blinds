@@ -20,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 _running = True
 
+# A bridge that is still booting, a flaky network, or a router reboot should
+# not end the daemon: launchd would only restart it into the same error.
+CONNECT_RETRY_START = 5.0
+CONNECT_RETRY_MAX = 300.0
+
 
 def _setup_logging(cfg: Config) -> None:
     level = getattr(logging, cfg.logging.level)
@@ -229,6 +234,11 @@ def _sleep_until(target: datetime.datetime) -> None:
         time.sleep(min(remaining, 1.0))
 
 
+def _sleep_for(seconds: float) -> None:
+    """Sleep for seconds, waking every second to check _running."""
+    _sleep_until(_now() + datetime.timedelta(seconds=seconds))
+
+
 def _now() -> datetime.datetime:
     return datetime.datetime.now().astimezone()
 
@@ -262,6 +272,21 @@ def send_command_now(cfg: Config, action: str) -> None:
         logger.info("%s sent to %d/%d blind%s", action, successes, len(devices), "s" if len(devices) != 1 else "")
 
 
+def _connect(client: BondClient, host: str) -> dict | None:
+    """Poll the bridge until it answers. Returns None if we shut down first."""
+    delay = CONNECT_RETRY_START
+    while _running:
+        try:
+            return client.get_version()
+        except Exception as exc:
+            logger.error(
+                "Cannot reach Bond Bridge at %s: %s. Retrying in %ds", host, exc, delay
+            )
+            _sleep_for(delay)
+            delay = min(delay * 2, CONNECT_RETRY_MAX)
+    return None
+
+
 def run(cfg: Config, dry_run: bool = False) -> None:
     _setup_logging(cfg)
 
@@ -276,16 +301,14 @@ def run(cfg: Config, dry_run: bool = False) -> None:
     host = _resolve_host(cfg)
 
     with BondClient(host, cfg.bond.token) as client:
-        try:
-            version = client.get_version()
-            logger.info(
-                "Connected to Bond Bridge (firmware: %s, model: %s)",
-                version.get("fw_ver", "?"),
-                version.get("model", "?"),
-            )
-        except Exception as exc:
-            logger.error("Cannot reach Bond Bridge at %s: %s", host, exc)
-            raise SystemExit(1)
+        version = _connect(client, host)
+        if version is None:
+            return
+        logger.info(
+            "Connected to Bond Bridge (firmware: %s, model: %s)",
+            version.get("fw_ver", "?"),
+            version.get("model", "?"),
+        )
 
         devices = _resolve_devices(client, cfg)
         if not devices:
